@@ -1,0 +1,3 @@
+"""
+BauCu - Django Voting System
+"""

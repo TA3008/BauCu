@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard – {{ election.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bar-animated {
+        transition: width 0.6s ease-in-out;
+    }
+    .stat-card .display-5 {
+        font-weight: 700;
+    }
+    #chartCanvas {
+        max-height: 400px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Elections</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
+            <li class="breadcrumb-item active">Dashboard</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-speedometer2"></i> {{ election.name }} – Dashboard</h2>
+        <div>
+            <span class="badge bg-info fs-6" id="autoRefreshBadge">
+                <i class="bi bi-arrow-repeat"></i> Auto-refresh: <span id="countdown">30</span>s
+            </span>
+        </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="row g-3 mb-4" id="summaryCards">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card stat-card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="display-5 text-primary" id="totalBallots">{{ dashboard.total_ballots }}</div>
+                    <div class="text-muted">Total Ballots</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card stat-card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="display-5 text-success" id="verifiedBallots">{{ dashboard.verified_ballots }}</div>
+                    <div class="text-muted">Verified</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card stat-card border-0 shadow-sm text-center">
+                <div class="card-body">
+                                    <div class="display-5 text-warning" id="pendingBallots">
+                                        {{ dashboard.total_ballots|default:"0" }}
+                                    </div>
+                    <div class="text-muted">Pending / Rejected</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card stat-card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="display-5 text-info">{{ dashboard.candidates|length }}</div>
+                    <div class="text-muted">Candidates</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Vote bars -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Votes by Candidate</h5>
+                </div>
+                <div class="card-body" id="voteBars">
+                    {% for c in dashboard.candidates %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-semibold">
+                                <span class="badge bg-secondary me-1">{{ c.code }}</span> {{ c.name }}
+                            </span>
+                            <span>
+                                {{ c.total_votes }} votes
+                                <span class="text-muted">({{ c.percentage }}%)</span>
+                            </span>
+                        </div>
+                        <div class="progress" style="height: 28px;">
+                            <div class="progress-bar bar-animated bg-primary"
+                                 role="progressbar"
+                                 style="width: {{ c.percentage }}%;"
+                                 aria-valuenow="{{ c.percentage }}"
+                                 aria-valuemin="0" aria-valuemax="100">
+                                {{ c.percentage }}%
+                            </div>
+                        </div>
+                        <div class="small text-muted mt-1">
+                            Verified: {{ c.verified_votes }} ({{ c.verified_percentage }}%)
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Vote Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Quick stats table -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-table"></i> Summary Table</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" id="summaryTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Candidate</th>
+                                <th class="text-end">Votes</th>
+                                <th class="text-end">%</th>
+                                <th class="text-end">Verified</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in dashboard.candidates %}
+                            <tr>
+                                <td><span class="badge bg-secondary">{{ c.code }}</span> {{ c.name }}</td>
+                                <td class="text-end">{{ c.total_votes }}</td>
+                                <td class="text-end">{{ c.percentage }}%</td>
+                                <td class="text-end">{{ c.verified_votes }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light fw-bold">
+                            <tr>
+                                <td>Total</td>
+                                <td class="text-end">{{ dashboard.total_ballots }}</td>
+                                <td class="text-end">100%</td>
+                                <td class="text-end">{{ dashboard.verified_ballots }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Log -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+            <a href="{% url 'voting:audit_log' election_pk=election.pk %}"
+               class="btn btn-sm btn-outline-secondary">View All</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Time</th>
+                        <th>Action</th>
+                        <th>User</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_logs %}
+                    <tr>
+                        <td class="text-nowrap small">{{ log.timestamp|date:"M d H:i:s" }}</td>
+                        <td>
+                            <span class="badge bg-{% if log.action == 'CREATE' %}primary{% elif log.action == 'VERIFY' %}success{% elif log.action == 'REJECT' %}danger{% elif log.action == 'BULK_IMPORT' %}info{% else %}secondary{% endif %}">
+                                {{ log.get_action_display }}
+                            </span>
+                        </td>
+                        <td>{{ log.performed_by.username }}</td>
+                        <td class="small">{{ log.description|truncatewords:15 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">No activity yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{{ dashboard|json_script:"dashboardData" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/static/js/dashboard.js"></script>
+<script>
+    initDashboard({{ election.pk }});
+</script>
+{% endblock %}

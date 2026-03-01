@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Add Ballot – {{ election.name }}{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Elections</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
+                    <li class="breadcrumb-item active">Add Ballot</li>
+                </ol>
+            </nav>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Enter Ballot</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate id="ballotForm">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% for e in field.errors %}
+                            <div class="text-danger small">{{ e }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-lg"></i> Record Ballot
+                            </button>
+                            <a href="{% url 'voting:election_detail' pk=election.pk %}"
+                               class="btn btn-outline-secondary">Back</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">Quick Entry Mode</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">Press <kbd>Enter</kbd> to submit and immediately start entering the next ballot.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-focus ballot code after submission
+    const codeInput = document.getElementById('id_ballot_code');
+    if (codeInput) codeInput.focus();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Verify Ballot {{ ballot.ballot_code }} – BauCu{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'voting:ballot_verify_list' election_pk=election.pk %}">Verification</a></li>
+                    <li class="breadcrumb-item active">{{ ballot.ballot_code }}</li>
+                </ol>
+            </nav>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0"><i class="bi bi-check2-circle"></i> Verify Ballot</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-4">
+                        <dt class="col-sm-4">Ballot Code</dt>
+                        <dd class="col-sm-8"><code class="fs-5">{{ ballot.ballot_code }}</code></dd>
+
+                        <dt class="col-sm-4">Candidate</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-secondary">{{ ballot.candidate.code }}</span>
+                            {{ ballot.candidate.name }}
+                        </dd>
+
+                        <dt class="col-sm-4">Entered By</dt>
+                        <dd class="col-sm-8">{{ ballot.entered_by.username }}</dd>
+
+                        <dt class="col-sm-4">Date Entered</dt>
+                        <dd class="col-sm-8">{{ ballot.created_at|date:"M d, Y H:i:s" }}</dd>
+                    </dl>
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Decision</label>
+                            {% for choice in form.decision %}
+                            <div class="form-check">
+                                {{ choice.tag }}
+                                <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                    {{ choice.choice_label }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                            {% for e in form.decision.errors %}
+                            <div class="text-danger small">{{ e }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_comment" class="form-label">Comment (optional)</label>
+                            {{ form.comment }}
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Submit
+                            </button>
+                            <a href="{% url 'voting:ballot_verify_list' election_pk=election.pk %}"
+                               class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

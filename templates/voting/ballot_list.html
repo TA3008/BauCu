@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Ballots – {{ election.name }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Elections</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
+            <li class="breadcrumb-item active">Ballots</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <h3><i class="bi bi-table"></i> Ballots</h3>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All</option>
+                        <option value="PENDING" {% if current_status == 'PENDING' %}selected{% endif %}>Pending</option>
+                        <option value="VERIFIED" {% if current_status == 'VERIFIED' %}selected{% endif %}>Verified</option>
+                        <option value="REJECTED" {% if current_status == 'REJECTED' %}selected{% endif %}>Rejected</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Candidate</label>
+                    <select name="candidate" class="form-select">
+                        <option value="">All</option>
+                        {% for c in candidates %}
+                        <option value="{{ c.code }}" {% if current_candidate == c.code %}selected{% endif %}>
+                            {{ c.code }} – {{ c.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Search Ballot Code</label>
+                    <input type="text" name="q" value="{{ search_query }}"
+                           class="form-control" placeholder="e.g. ABC-001">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Table -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ballot Code</th>
+                        <th>Candidate</th>
+                        <th>Status</th>
+                        <th>Entered By</th>
+                        <th>Verified By</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ballot in ballots %}
+                    <tr>
+                        <td><code>{{ ballot.ballot_code }}</code></td>
+                        <td>
+                            <span class="badge bg-secondary">{{ ballot.candidate.code }}</span>
+                            {{ ballot.candidate.name }}
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if ballot.verification_status == 'VERIFIED' %}success{% elif ballot.verification_status == 'REJECTED' %}danger{% else %}warning{% endif %}">
+                                {{ ballot.get_verification_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ ballot.entered_by.username }}</td>
+                        <td>{{ ballot.verified_by.username|default:"-" }}</td>
+                        <td>{{ ballot.created_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No ballots found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% include 'partials/pagination.html' %}
+</div>
+{% endblock %}

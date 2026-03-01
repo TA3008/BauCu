@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Bulk Import – {{ election.name }}{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Elections</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
+                    <li class="breadcrumb-item active">Bulk Import</li>
+                </ol>
+            </nav>
+
+            <h3 class="mb-4"><i class="bi bi-upload"></i> Bulk Ballot Import</h3>
+
+            <!-- Tab navigation -->
+            <ul class="nav nav-tabs mb-4" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab"
+                            data-bs-target="#csvTab" type="button">
+                        <i class="bi bi-file-earmark-csv"></i> CSV Upload
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab"
+                            data-bs-target="#textTab" type="button">
+                        <i class="bi bi-clipboard"></i> Paste Data
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- CSV Upload Tab -->
+                <div class="tab-pane fade show active" id="csvTab" role="tabpanel">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <form method="post" enctype="multipart/form-data" novalidate>
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="csv">
+                                {% for field in csv_form %}
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                    <div class="form-text">{{ field.help_text }}</div>
+                                    {% endif %}
+                                    {% for e in field.errors %}
+                                    <div class="text-danger small">{{ e }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endfor %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-upload"></i> Upload &amp; Import
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm mt-3">
+                        <div class="card-body">
+                            <h6>CSV Format Example</h6>
+                            <pre class="bg-light p-3 rounded"><code>ballot_code,candidate_code
+ABC-001,C01
+ABC-002,C02
+ABC-003,C01</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text Paste Tab -->
+                <div class="tab-pane fade" id="textTab" role="tabpanel">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="text">
+                                {% for field in text_form %}
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                    <div class="form-text">{{ field.help_text }}</div>
+                                    {% endif %}
+                                    {% for e in field.errors %}
+                                    <div class="text-danger small">{{ e }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endfor %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-clipboard-check"></i> Import Pasted Data
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

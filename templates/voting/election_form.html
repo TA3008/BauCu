@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} – BauCu{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <h2 class="mb-4">{{ title }}</h2>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white"><h5 class="mb-0">Election Details</h5></div>
+                    <div class="card-body">
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% for e in field.errors %}
+                            <div class="text-danger small">{{ e }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Candidates</h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="addCandidate">
+                            <i class="bi bi-plus"></i> Add Candidate
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        {{ candidate_formset.management_form }}
+                        {% if candidate_formset.non_form_errors %}
+                        <div class="alert alert-danger">
+                            {% for e in candidate_formset.non_form_errors %}
+                            <div>{{ e }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div id="candidateForms">
+                            {% for cform in candidate_formset %}
+                            <div class="candidate-row border rounded p-3 mb-3">
+                                {% if cform.instance.pk %}{{ cform.id }}{% endif %}
+                                <div class="row g-3">
+                                    <div class="col-md-2">
+                                        <label class="form-label">Code</label>
+                                        {{ cform.code }}
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label">Name</label>
+                                        {{ cform.name }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Order</label>
+                                        {{ cform.order }}
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        {% if cform.DELETE %}
+                                        <div class="form-check">
+                                            {{ cform.DELETE }}
+                                            <label class="form-check-label text-danger">Delete</label>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% for e in cform.errors.values %}
+                                <div class="text-danger small mt-1">{{ e }}</div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> Save
+                    </button>
+                    <a href="{% url 'voting:election_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addBtn = document.getElementById('addCandidate');
+    const container = document.getElementById('candidateForms');
+    const totalForms = document.getElementById('id_candidates-TOTAL_FORMS');
+
+    addBtn.addEventListener('click', function() {
+        const idx = parseInt(totalForms.value);
+        const tpl = container.querySelector('.candidate-row');
+        if (!tpl) return;
+        const newRow = tpl.cloneNode(true);
+        // Update field names/ids
+        newRow.querySelectorAll('input, select').forEach(function(el) {
+            if (el.name) {
+                el.name = el.name.replace(/-\d+-/, '-' + idx + '-');
+                el.id = el.id.replace(/-\d+-/, '-' + idx + '-');
+                if (el.type !== 'checkbox') el.value = '';
+            }
+        });
+        container.appendChild(newRow);
+        totalForms.value = idx + 1;
+    });
+});
+</script>
+{% endblock %}

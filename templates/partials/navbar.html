@@ -1,0 +1,58 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="{% url 'voting:election_list' %}">
+            <i class="bi bi-check2-square"></i> BauCu
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navMain">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMain">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'voting:election_list' %}">
+                        <i class="bi bi-list-ul"></i> Elections
+                    </a>
+                </li>
+                {% if user.is_authenticated and user.is_admin_role or user.is_superuser %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'voting:election_create' %}">
+                        <i class="bi bi-plus-circle"></i> New Election
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            <ul class="navbar-nav">
+                {% if user.is_authenticated %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button"
+                       data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle"></i> {{ user.username }}
+                        <span class="badge bg-light text-dark ms-1">{{ user.get_role_display }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'accounts:password_change' %}">
+                            <i class="bi bi-key"></i> Change Password
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="post" action="{% url 'accounts:logout' %}">
+                                {% csrf_token %}
+                                <button class="dropdown-item" type="submit">
+                                    <i class="bi bi-box-arrow-right"></i> Logout
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'accounts:login' %}">
+                        <i class="bi bi-box-arrow-in-right"></i> Login
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>

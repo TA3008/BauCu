@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Audit Log – {{ election.name }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Elections</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
+            <li class="breadcrumb-item active">Audit Log</li>
+        </ol>
+    </nav>
+
+    <h3 class="mb-4"><i class="bi bi-clock-history"></i> Audit Log</h3>
+
+    <!-- Filters -->
+    <form method="get" class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Action</label>
+                    <select name="action" class="form-select">
+                        <option value="">All</option>
+                        {% for val, label in action_choices %}
+                        <option value="{{ val }}" {% if current_action == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">User</label>
+                    <input type="text" name="user" value="{{ current_user }}"
+                           class="form-control" placeholder="Username">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                    <a href="{% url 'voting:audit_log' election_pk=election.pk %}"
+                       class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Action</th>
+                        <th>User</th>
+                        <th>Description</th>
+                        <th>Before</th>
+                        <th>After</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="text-nowrap small">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+                        <td>
+                            <span class="badge bg-{% if log.action == 'CREATE' %}primary{% elif log.action == 'VERIFY' %}success{% elif log.action == 'REJECT' %}danger{% elif log.action == 'BULK_IMPORT' %}info{% elif log.action == 'UPDATE' %}warning{% else %}secondary{% endif %}">
+                                {{ log.get_action_display }}
+                            </span>
+                        </td>
+                        <td>{{ log.performed_by.username }}</td>
+                        <td>{{ log.description|truncatewords:25 }}</td>
+                        <td class="small">
+                            {% if log.before_data %}
+                            <code class="text-wrap">{{ log.before_data }}</code>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td class="small">
+                            {% if log.after_data %}
+                            <code class="text-wrap">{{ log.after_data }}</code>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td class="small">{{ log.ip_address|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No audit records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% include 'partials/pagination.html' %}
+</div>
+{% endblock %}
