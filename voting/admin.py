@@ -26,7 +26,7 @@ class VoteSummaryInline(admin.TabularInline):
 class BallotResource(resources.ModelResource):
     class Meta:
         model = Ballot
-        fields = ('id', 'ref', 'election__name', 'candidate__code', 'ballot_code',
+        fields = ('id', 'ref', 'election__name', 'candidate__order', 'candidate__name', 'ballot_code',
                   'entered_by__username', 'verified_by__username',
                   'verification_status', 'created_at')
         export_order = fields
@@ -45,9 +45,9 @@ class ElectionAdmin(admin.ModelAdmin):
 
 @admin.register(Candidate)
 class CandidateAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name', 'election', 'order')
+    list_display = ('order', 'name', 'election')
     list_filter = ('election',)
-    search_fields = ('code', 'name')
+    search_fields = ('name',)
 
 
 @admin.register(Ballot)

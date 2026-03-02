@@ -6,26 +6,26 @@
         <div class="col-lg-10">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Elections</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Cuộc bầu cử</a></li>
                     <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
-                    <li class="breadcrumb-item active">Bulk Import</li>
+                    <li class="breadcrumb-item active">Nhập hàng loạt</li>
                 </ol>
             </nav>
 
-            <h3 class="mb-4"><i class="bi bi-upload"></i> Bulk Ballot Import</h3>
+            <h3 class="mb-4"><i class="bi bi-upload"></i> Nhập phiếu hàng loạt</h3>
 
             <!-- Tab navigation -->
             <ul class="nav nav-tabs mb-4" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" data-bs-toggle="tab"
+                        <button class="nav-link active" data-bs-toggle="tab"
                             data-bs-target="#csvTab" type="button">
-                        <i class="bi bi-file-earmark-csv"></i> CSV Upload
+                        <i class="bi bi-file-earmark-csv"></i> Tải CSV
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-bs-toggle="tab"
+                        <button class="nav-link" data-bs-toggle="tab"
                             data-bs-target="#textTab" type="button">
-                        <i class="bi bi-clipboard"></i> Paste Data
+                        <i class="bi bi-clipboard"></i> Dán dữ liệu
                     </button>
                 </li>
             </ul>
@@ -50,9 +50,9 @@
                                     {% endfor %}
                                 </div>
                                 {% endfor %}
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-upload"></i> Upload &amp; Import
-                                </button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-upload"></i> Tải lên &amp; Nhập
+                                        </button>
                             </form>
                         </div>
                     </div>
@@ -60,10 +60,10 @@
                     <div class="card shadow-sm mt-3">
                         <div class="card-body">
                             <h6>CSV Format Example</h6>
-                            <pre class="bg-light p-3 rounded"><code>ballot_code,candidate_code
-ABC-001,C01
-ABC-002,C02
-ABC-003,C01</code></pre>
+                            <pre class="bg-light p-3 rounded"><code>ballot_code,candidate_id_or_order
+ABC-001,1
+ABC-002,2
+ABC-003,1</code></pre>
                         </div>
                     </div>
                 </div>
@@ -87,9 +87,9 @@ ABC-003,C01</code></pre>
                                     {% endfor %}
                                 </div>
                                 {% endfor %}
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-clipboard-check"></i> Import Pasted Data
-                                </button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-clipboard-check"></i> Nhập dữ liệu dán
+                                        </button>
                             </form>
                         </div>
                     </div>

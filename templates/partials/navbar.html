@@ -11,13 +11,13 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'voting:election_list' %}">
-                        <i class="bi bi-list-ul"></i> Elections
+                        <i class="bi bi-list-ul"></i> Cuộc bầu cử
                     </a>
                 </li>
                 {% if user.is_authenticated and user.is_admin_role or user.is_superuser %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'voting:election_create' %}">
-                        <i class="bi bi-plus-circle"></i> New Election
+                        <i class="bi bi-plus-circle"></i> Tạo cuộc bầu cử
                     </a>
                 </li>
                 {% endif %}

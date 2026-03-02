@@ -13,8 +13,10 @@ urlpatterns = [
 
     # Ballots
     path('<int:election_pk>/ballot/add/', views.BallotCreateView.as_view(), name='ballot_create'),
+    path('<int:election_pk>/vote/', views.PublicVoteView.as_view(), name='vote'),
     path('<int:election_pk>/ballot/bulk/', views.BulkBallotUploadView.as_view(), name='bulk_upload'),
     path('<int:election_pk>/ballots/', views.BallotListView.as_view(), name='ballot_list'),
+    path('<int:election_pk>/ballots/<int:pk>/', views.BallotDetailView.as_view(), name='ballot_detail'),
 
     # Verification
     path('<int:election_pk>/verify/', views.BallotVerifyListView.as_view(), name='ballot_verify_list'),

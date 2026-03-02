@@ -29,15 +29,17 @@ def process_bulk_ballots(self, election_id, rows, user_id):
     try:
         election = Election.objects.get(pk=election_id)
         user = User.objects.get(pk=user_id)
-        candidate_map = dict(
-            Candidate.objects.filter(election=election).values_list('code', 'pk')
-        )
+        # Map candidate identifier (pk or order) to PK
+        candidate_map = {}
+        for c in Candidate.objects.filter(election=election):
+            candidate_map[str(c.pk)] = c.pk
+            candidate_map[str(c.order)] = c.pk
 
         chunk_size = getattr(settings, 'BALLOT_BULK_CHUNK_SIZE', 500)
         ballots = []
         for row in rows:
             bc = row['ballot_code'].strip().upper()
-            cid = candidate_map.get(row.get('candidate_code', '').strip().upper())
+            cid = candidate_map.get(row.get('candidate_code', '').strip())
             if cid:
                 ballots.append(Ballot(
                     election=election,

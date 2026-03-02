@@ -4,14 +4,14 @@
 <div class="container-fluid">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Elections</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Cuộc bầu cử</a></li>
             <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
-            <li class="breadcrumb-item active">Ballots</li>
+            <li class="breadcrumb-item active">Phiếu bầu</li>
         </ol>
     </nav>
 
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-table"></i> Ballots</h3>
+        <h3><i class="bi bi-table"></i> Phiếu bầu</h3>
     </div>
 
     <!-- Filters -->
@@ -19,33 +19,33 @@
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label">Status</label>
+                    <label class="form-label">Trạng thái</label>
                     <select name="status" class="form-select">
                         <option value="">All</option>
-                        <option value="PENDING" {% if current_status == 'PENDING' %}selected{% endif %}>Pending</option>
-                        <option value="VERIFIED" {% if current_status == 'VERIFIED' %}selected{% endif %}>Verified</option>
-                        <option value="REJECTED" {% if current_status == 'REJECTED' %}selected{% endif %}>Rejected</option>
+                        <option value="PENDING" {% if current_status == 'PENDING' %}selected{% endif %}>Chờ</option>
+                        <option value="VERIFIED" {% if current_status == 'VERIFIED' %}selected{% endif %}>Đã xác minh</option>
+                        <option value="REJECTED" {% if current_status == 'REJECTED' %}selected{% endif %}>Bị từ chối</option>
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Candidate</label>
+                    <label class="form-label">Ứng viên</label>
                     <select name="candidate" class="form-select">
-                        <option value="">All</option>
+                        <option value="">Tất cả</option>
                         {% for c in candidates %}
-                        <option value="{{ c.code }}" {% if current_candidate == c.code %}selected{% endif %}>
-                            {{ c.code }} – {{ c.name }}
+                        <option value="{{ c.pk }}" {% if current_candidate == c.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ c.order }} – {{ c.name }}
                         </option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Search Ballot Code</label>
+                    <label class="form-label">Tìm mã phiếu</label>
                     <input type="text" name="q" value="{{ search_query }}"
                            class="form-control" placeholder="e.g. ABC-001">
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filter
+                        <i class="bi bi-search"></i> Lọc
                     </button>
                 </div>
             </div>
@@ -58,34 +58,47 @@
             <table class="table table-hover table-striped mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Ballot Code</th>
-                        <th>Candidate</th>
-                        <th>Status</th>
-                        <th>Entered By</th>
-                        <th>Verified By</th>
+                        <th>Mã phiếu</th>
+                        <th>Ứng viên</th>
+                        <th>Trạng thái</th>
+                        <th>Người nhập</th>
+                        <th>Người xác minh</th>
                         <th>Created</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for ballot in ballots %}
                     <tr>
-                        <td><code>{{ ballot.ballot_code }}</code></td>
+                        <td><a href="{% url 'voting:ballot_detail' election_pk=election.pk pk=ballot.pk %}"><code>{{ ballot.ballot_code }}</code></a></td>
                         <td>
-                            <span class="badge bg-secondary">{{ ballot.candidate.code }}</span>
-                            {{ ballot.candidate.name }}
+                            {% if ballot.choices.all %}
+                                {% for ch in ballot.choices.all %}
+                                <div><span class="badge bg-secondary">{{ ch.candidate.order }}</span> {{ ch.candidate.name }}</div>
+                                {% endfor %}
+                            {% else %}
+                                {% if ballot.candidate %}
+                                <span class="badge bg-secondary">{{ ballot.candidate.order }}</span>
+                                {{ ballot.candidate.name }}
+                                {% else %}
+                                <div class="text-muted">Không có ứng viên</div>
+                                {% endif %}
+                            {% endif %}
                         </td>
                         <td>
                             <span class="badge bg-{% if ballot.verification_status == 'VERIFIED' %}success{% elif ballot.verification_status == 'REJECTED' %}danger{% else %}warning{% endif %}">
                                 {{ ballot.get_verification_status_display }}
                             </span>
+                            {% if ballot.is_invalid %}
+                            <span class="badge bg-danger ms-1">Không hợp lệ</span>
+                            {% endif %}
                         </td>
                         <td>{{ ballot.entered_by.username }}</td>
                         <td>{{ ballot.verified_by.username|default:"-" }}</td>
-                        <td>{{ ballot.created_at|date:"M d, Y H:i" }}</td>
+                        <td>{{ ballot.created_at|date:"d/m/Y H:i:s 'UTC+7'" }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">No ballots found.</td>
+                        <td colspan="6" class="text-center text-muted py-4">Không tìm thấy phiếu nào.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

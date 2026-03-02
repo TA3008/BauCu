@@ -1,23 +1,23 @@
 {% extends 'base.html' %}
-{% block title %}Audit Log – {{ election.name }}{% endblock %}
+{% block title %}Nhật ký – {{ election.name }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Elections</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Cuộc bầu cử</a></li>
             <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
-            <li class="breadcrumb-item active">Audit Log</li>
+            <li class="breadcrumb-item active">Nhật ký</li>
         </ol>
     </nav>
 
-    <h3 class="mb-4"><i class="bi bi-clock-history"></i> Audit Log</h3>
+    <h3 class="mb-4"><i class="bi bi-clock-history"></i> Nhật ký hoạt động</h3>
 
     <!-- Filters -->
     <form method="get" class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-md-4">
-                    <label class="form-label">Action</label>
+                    <label class="form-label">Thao tác</label>
                     <select name="action" class="form-select">
                         <option value="">All</option>
                         {% for val, label in action_choices %}
@@ -32,10 +32,10 @@
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-funnel"></i> Filter
+                        <i class="bi bi-funnel"></i> Lọc
                     </button>
                     <a href="{% url 'voting:audit_log' election_pk=election.pk %}"
-                       class="btn btn-outline-secondary">Clear</a>
+                       class="btn btn-outline-secondary">Xóa</a>
                 </div>
             </div>
         </div>

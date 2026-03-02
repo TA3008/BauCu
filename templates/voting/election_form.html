@@ -10,7 +10,7 @@
                 {% csrf_token %}
 
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-white"><h5 class="mb-0">Election Details</h5></div>
+                    <div class="card-header bg-white"><h5 class="mb-0">Chi tiết cuộc bầu cử</h5></div>
                     <div class="card-body">
                         {% for field in form %}
                         <div class="mb-3">
@@ -31,9 +31,9 @@
 
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Candidates</h5>
+                        <h5 class="mb-0">Ứng viên</h5>
                         <button type="button" class="btn btn-sm btn-outline-primary" id="addCandidate">
-                            <i class="bi bi-plus"></i> Add Candidate
+                            <i class="bi bi-plus"></i> Thêm ứng viên
                         </button>
                     </div>
                     <div class="card-body">
@@ -50,23 +50,19 @@
                             <div class="candidate-row border rounded p-3 mb-3">
                                 {% if cform.instance.pk %}{{ cform.id }}{% endif %}
                                 <div class="row g-3">
-                                    <div class="col-md-2">
-                                        <label class="form-label">Code</label>
-                                        {{ cform.code }}
-                                    </div>
-                                    <div class="col-md-5">
-                                        <label class="form-label">Name</label>
+                                    <div class="col-md-7">
+                                        <label class="form-label">Tên</label>
                                         {{ cform.name }}
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label">Order</label>
+                                        <label class="form-label">Thứ tự</label>
                                         {{ cform.order }}
                                     </div>
                                     <div class="col-md-2 d-flex align-items-end">
                                         {% if cform.DELETE %}
                                         <div class="form-check">
                                             {{ cform.DELETE }}
-                                            <label class="form-check-label text-danger">Delete</label>
+                                            <label class="form-check-label text-danger">Xóa</label>
                                         </div>
                                         {% endif %}
                                     </div>
@@ -82,9 +78,9 @@
 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg"></i> Save
+                        <i class="bi bi-check-lg"></i> Lưu
                     </button>
-                    <a href="{% url 'voting:election_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    <a href="{% url 'voting:election_list' %}" class="btn btn-outline-secondary">Hủy</a>
                 </div>
             </form>
         </div>

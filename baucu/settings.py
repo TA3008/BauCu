@@ -41,6 +41,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -106,10 +107,22 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 # ---------------------------------------------------------------------------
 # Internationalization
 # ---------------------------------------------------------------------------
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'vi'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
 USE_TZ = True
+
+# Locale settings
+LANGUAGES = [
+    ('vi', 'Tiếng Việt'),
+]
+LOCALE_PATHS = [BASE_DIR / 'locale']
+
+# Date/time display format used by the `date` template filter when using
+# the default formats. We prefer dd/MM/YYYY HH:mm:ss and append UTC+7 label.
+DATETIME_FORMAT = "d/m/Y H:i:s 'UTC+7'"
+DATE_FORMAT = 'd/m/Y'
+TIME_FORMAT = 'H:i:s'
 
 # ---------------------------------------------------------------------------
 # Static files

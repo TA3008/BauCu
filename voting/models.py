@@ -14,6 +14,7 @@ from django.db import models
 from django.utils import timezone
 
 
+
 # ---------------------------------------------------------------------------
 # Election
 # ---------------------------------------------------------------------------
@@ -28,6 +29,9 @@ class Election(models.Model):
 
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    # Validation rules for number of choices per ballot
+    min_choices = models.PositiveIntegerField(null=True, blank=True, help_text='Minimum number of choices required for a valid ballot')
+    max_choices = models.PositiveIntegerField(null=True, blank=True, help_text='Maximum number of choices allowed for a valid ballot')
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.DRAFT, db_index=True
     )
@@ -55,22 +59,17 @@ class Candidate(models.Model):
         Election, on_delete=models.CASCADE, related_name='candidates'
     )
     name = models.CharField(max_length=255)
-    code = models.CharField(
-        max_length=20,
-        help_text='Short identifier (e.g. "C01")',
-    )
+    # removed `code` field (not needed)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = 'voting_candidate'
         ordering = ['order', 'name']
-        unique_together = [('election', 'code')]
-        indexes = [
-            models.Index(fields=['election', 'code'], name='idx_candidate_election_code'),
-        ]
+        # no unique_together on code (field removed)
+        indexes = []
 
     def __str__(self):
-        return f'{self.code} – {self.name}'
+        return f'{self.name}'
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +92,8 @@ class Ballot(models.Model):
         Election, on_delete=models.CASCADE, related_name='ballots'
     )
     candidate = models.ForeignKey(
-        Candidate, on_delete=models.PROTECT, related_name='ballots', db_index=True
+        Candidate, on_delete=models.PROTECT, related_name='ballots', db_index=True,
+        null=True, blank=True,
     )
     ballot_code = models.CharField(
         max_length=50,
@@ -117,6 +117,9 @@ class Ballot(models.Model):
         db_index=True,
     )
 
+    # Mark ballots that violate election rules (kept for audit/listing but excluded from statistics)
+    is_invalid = models.BooleanField(default=False, db_index=True)
+
     # Optimistic concurrency control field
     version = models.PositiveIntegerField(default=1)
 
@@ -134,7 +137,25 @@ class Ballot(models.Model):
         ]
 
     def __str__(self):
-        return f'Ballot {self.ballot_code} → {self.candidate.code}'
+        cand = self.candidate.name if self.candidate else 'MULTI'
+        return f'Ballot {self.ballot_code} → {cand}'
+
+
+
+class BallotChoice(models.Model):
+    """Associates a Ballot with a Candidate for multi-select ballots."""
+    ballot = models.ForeignKey('Ballot', on_delete=models.CASCADE, related_name='choices')
+    candidate = models.ForeignKey(Candidate, on_delete=models.PROTECT, related_name='ballot_choices')
+
+    class Meta:
+        db_table = 'voting_ballot_choice'
+        unique_together = [('ballot', 'candidate')]
+
+    def __str__(self):
+        return f'{self.ballot.ballot_code} -> {self.candidate.name}'
+
+
+# candidate code generation removed (field `code` was removed)
 
 
 # ---------------------------------------------------------------------------
@@ -212,4 +233,4 @@ class VoteSummary(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.candidate.code}: {self.total_votes} votes'
+        return f'{self.candidate.name}: {self.total_votes} votes'

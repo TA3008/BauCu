@@ -33,7 +33,7 @@ from .forms import (
 from .mixins import (
     AdminRequiredMixin, OperatorRequiredMixin, ViewerRequiredMixin, get_client_ip,
 )
-from .models import Election, Candidate, Ballot, AuditLog, VoteSummary
+from .models import Election, Candidate, Ballot, AuditLog, VoteSummary, BallotChoice
 
 logger = logging.getLogger('voting')
 
@@ -171,34 +171,111 @@ class BallotCreateView(OperatorRequiredMixin, View):
             'form': form, 'election': election,
         })
 
+
+class PublicVoteView(ViewerRequiredMixin, View):
+    """Allow any authenticated user to vote in an OPEN election.
+    Creates one Ballot per selected candidate and marks them as VERIFIED.
+    """
+    template_name = 'voting/vote.html'
+
+    def get_election(self):
+        return get_object_or_404(Election, pk=self.kwargs['election_pk'], status=Election.Status.OPEN)
+
+    def get(self, request, election_pk):
+        election = self.get_election()
+        return render(request, self.template_name, {'election': election})
+
     def post(self, request, election_pk):
         election = self.get_election()
-        form = BallotForm(request.POST, election=election)
-        if form.is_valid():
-            with transaction.atomic():
-                ballot = form.save(commit=False)
-                ballot.election = election
-                ballot.entered_by = request.user
-                ballot.save()
-                AuditLog.objects.create(
-                    election=election,
-                    ballot=ballot,
-                    action=AuditLog.Action.CREATE,
-                    performed_by=request.user,
-                    after_data={
-                        'ballot_code': ballot.ballot_code,
-                        'candidate': ballot.candidate.code,
-                    },
-                    description=f'Ballot {ballot.ballot_code} entered.',
-                    ip_address=get_client_ip(request),
-                )
-            # Invalidate cache
-            cache.delete(f'dashboard_{election.pk}')
-            messages.success(request, f'Ballot {ballot.ballot_code} recorded.')
-            return redirect('voting:ballot_create', election_pk=election.pk)
-        return render(request, self.template_name, {
-            'form': form, 'election': election,
-        })
+        selected = request.POST.getlist('candidates')
+        if not selected:
+            messages.error(request, 'Vui lòng chọn ít nhất một ứng viên.')
+            return render(request, self.template_name, {'election': election})
+        # Validate selection against election rules
+        sel_count = len(selected)
+        min_c = election.min_choices
+        max_c = election.max_choices
+        invalid_reason = None
+        if min_c and sel_count < min_c:
+            invalid_reason = f'Bạn đã chọn {sel_count} ứng viên — tối thiểu là {min_c}.'
+        if max_c and sel_count > max_c:
+            invalid_reason = f'Bạn đã chọn {sel_count} ứng viên — tối đa là {max_c}.'
+
+        # If invalid and user hasn't confirmed, prompt for confirmation
+        if invalid_reason and request.POST.get('confirm') != '1':
+            # re-render vote form with confirmation prompt
+            return render(request, self.template_name, {
+                'election': election,
+                'selected': selected,
+                'invalid': True,
+                'invalid_reason': invalid_reason,
+            })
+
+        created = []
+        with transaction.atomic():
+            # Create a single Ballot record representing this submission
+
+            import uuid
+            code = uuid.uuid4().hex[:12].upper()
+            # Use first selected candidate as the Ballot.candidate to satisfy existing DB constraint
+            first_candidate = get_object_or_404(Candidate, pk=selected[0], election=election)
+            ballot = Ballot.objects.create(
+                election=election,
+                candidate=first_candidate,
+                ballot_code=code,
+                entered_by=request.user,
+                verified_by=(request.user if not invalid_reason else None),
+                verification_status=(
+                    Ballot.VerificationStatus.VERIFIED if not invalid_reason else Ballot.VerificationStatus.PENDING
+                ),
+                is_invalid=bool(invalid_reason),
+            )
+
+            choices = []
+            for cand_id in selected:
+                candidate = get_object_or_404(Candidate, pk=cand_id, election=election)
+                choices.append(BallotChoice(ballot=ballot, candidate=candidate))
+
+            # Bulk create choices
+            BallotChoice.objects.bulk_create(choices)
+            # Update summaries only for valid ballots
+            if not ballot.is_invalid:
+                for choice in choices:
+                    VoteSummary.objects.update_or_create(
+                        election=election,
+                        candidate=choice.candidate,
+                        defaults={'total_votes': 0, 'verified_votes': 0},
+                    )
+                    VoteSummary.objects.filter(election=election, candidate=choice.candidate).update(
+                        total_votes=F('total_votes') + 1,
+                        verified_votes=F('verified_votes') + 1,
+                    )
+
+            # Audit log with candidate list
+            AuditLog.objects.create(
+                election=election,
+                ballot=ballot,
+                action=AuditLog.Action.CREATE,
+                performed_by=request.user,
+                after_data={
+                    'ballot_code': ballot.ballot_code,
+                    'candidates': [c.candidate.name for c in choices],
+                    'is_invalid': ballot.is_invalid,
+                },
+                description=(
+                    f'Public vote by {request.user.username} for {len(choices)} candidate(s).' +
+                    (f' Invalid: {invalid_reason}' if invalid_reason else '')
+                ),
+                ip_address=get_client_ip(request),
+            )
+            created.append(ballot)
+
+        cache.delete(f'dashboard_{election.pk}')
+        if any(b.is_invalid for b in created):
+            messages.warning(request, 'Phiếu đã được lưu nhưng được đánh dấu là không hợp lệ.')
+        else:
+            messages.success(request, f'Cảm ơn — phiếu của bạn cho {len(created)} ứng viên đã được ghi nhận.')
+        return redirect('voting:election_detail', pk=election.pk)
 
 
 # ===================================================================
@@ -251,20 +328,29 @@ class BulkBallotUploadView(OperatorRequiredMixin, View):
 
     def _process_csv(self, request, election, rows):
         """Bulk-create ballots from parsed CSV rows."""
-        candidate_map = dict(
-            Candidate.objects.filter(election=election).values_list('code', 'pk')
-        )
+        # Accept candidate identifier as either PK or order (both mapped to PK)
+        candidate_map = {}
+        for c in Candidate.objects.filter(election=election):
+            candidate_map[str(c.pk)] = c.pk
+            candidate_map[str(c.order)] = c.pk
         chunk_size = getattr(settings, 'BALLOT_BULK_CHUNK_SIZE', 500)
         ballots = []
         for row in rows:
             bc = row['ballot_code'].strip().upper()
-            cc = row['candidate_code'].strip().upper()
-            ballots.append(Ballot(
-                election=election,
-                candidate_id=candidate_map[cc],
-                ballot_code=bc,
-                entered_by=request.user,
-            ))
+            cc = row['candidate_code'].strip()
+            cid = candidate_map.get(cc)
+            if cid:
+                is_invalid = False
+                # For single-candidate bulk rows, check election rules
+                if election.min_choices and election.min_choices > 1:
+                    is_invalid = True
+                ballots.append(Ballot(
+                    election=election,
+                    candidate_id=cid,
+                    ballot_code=bc,
+                    entered_by=request.user,
+                    is_invalid=is_invalid,
+                ))
 
         created = 0
         with transaction.atomic():
@@ -287,15 +373,18 @@ class BulkBallotUploadView(OperatorRequiredMixin, View):
     def _process_text(self, request, election, parsed_rows):
         """Bulk-create ballots from parsed text rows."""
         chunk_size = getattr(settings, 'BALLOT_BULK_CHUNK_SIZE', 500)
-        ballots = [
-            Ballot(
+        ballots = []
+        for row in parsed_rows:
+            is_invalid = False
+            if election.min_choices and election.min_choices > 1:
+                is_invalid = True
+            ballots.append(Ballot(
                 election=election,
                 candidate_id=row['candidate_id'],
                 ballot_code=row['ballot_code'],
                 entered_by=request.user,
-            )
-            for row in parsed_rows
-        ]
+                is_invalid=is_invalid,
+            ))
 
         created = 0
         with transaction.atomic():
@@ -317,8 +406,9 @@ class BulkBallotUploadView(OperatorRequiredMixin, View):
     @staticmethod
     def _rebuild_summaries(election):
         """Rebuild VoteSummary from actual counts (used after bulk ops)."""
+        # Exclude ballots marked as invalid from summaries
         summaries = (
-            Ballot.objects.filter(election=election)
+            Ballot.objects.filter(election=election, is_invalid=False)
             .values('candidate')
             .annotate(cnt=Count('id'))
         )
@@ -430,9 +520,11 @@ class BallotVerifyView(OperatorRequiredMixin, View):
 
                 # Update verified count in summary
                 if decision == 'VERIFIED':
-                    VoteSummary.objects.filter(
-                        election=election, candidate=ballot.candidate,
-                    ).update(verified_votes=F('verified_votes') + 1)
+                    # Only update summary if ballot is not marked invalid
+                    if not ballot.is_invalid:
+                        VoteSummary.objects.filter(
+                            election=election, candidate=ballot.candidate,
+                        ).update(verified_votes=F('verified_votes') + 1)
 
             cache.delete(f'dashboard_{election.pk}')
             messages.success(request, f'Ballot {ballot.ballot_code} {decision.lower()}.')
@@ -482,7 +574,7 @@ class DashboardView(AdminRequiredMixin, View):
             vpct = (s.verified_votes / total * 100) if total else 0
             candidates.append({
                 'name': s.candidate.name,
-                'code': s.candidate.code,
+                'order': s.candidate.order,
                 'total_votes': s.total_votes,
                 'verified_votes': s.verified_votes,
                 'percentage': round(pct, 2),
@@ -557,7 +649,7 @@ class BallotListView(ViewerRequiredMixin, ListView):
             qs = qs.filter(verification_status=status)
         candidate = self.request.GET.get('candidate')
         if candidate:
-            qs = qs.filter(candidate__code=candidate)
+            qs = qs.filter(candidate__pk=candidate)
         search = self.request.GET.get('q')
         if search:
             qs = qs.filter(ballot_code__icontains=search)
@@ -571,6 +663,21 @@ class BallotListView(ViewerRequiredMixin, ListView):
         ctx['current_status'] = self.request.GET.get('status', '')
         ctx['current_candidate'] = self.request.GET.get('candidate', '')
         ctx['search_query'] = self.request.GET.get('q', '')
+        return ctx
+
+
+class BallotDetailView(ViewerRequiredMixin, DetailView):
+    model = Ballot
+    template_name = 'voting/ballot_detail.html'
+    context_object_name = 'ballot'
+
+    def get_object(self, queryset=None):
+        election = get_object_or_404(Election, pk=self.kwargs['election_pk'])
+        return get_object_or_404(Ballot.objects.select_related('candidate', 'entered_by', 'verified_by'), pk=self.kwargs['pk'], election=election)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['election'] = get_object_or_404(Election, pk=self.kwargs['election_pk'])
         return ctx
 
 

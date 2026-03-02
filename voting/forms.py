@@ -20,7 +20,7 @@ from .models import Election, Candidate, Ballot
 class ElectionForm(forms.ModelForm):
     class Meta:
         model = Election
-        fields = ['name', 'description', 'status']
+        fields = ['name', 'description', 'status', 'min_choices', 'max_choices']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -31,18 +31,15 @@ class ElectionForm(forms.ModelForm):
 class CandidateForm(forms.ModelForm):
     class Meta:
         model = Candidate
-        fields = ['name', 'code', 'order']
+        fields = ['name', 'order']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. C01'}),
             'order': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
     def clean_code(self):
-        code = self.cleaned_data['code'].strip().upper()
-        if not re.match(r'^[A-Z0-9]{1,20}$', code):
-            raise ValidationError('Code must be 1-20 alphanumeric characters.')
-        return code
+        # code field removed; keep API compatibility if called
+        return ''
 
 
 CandidateFormSet = forms.inlineformset_factory(
@@ -96,11 +93,11 @@ class BallotForm(forms.ModelForm):
 # ---------------------------------------------------------------------------
 class BulkBallotUploadForm(forms.Form):
     """
-    Accepts a CSV file with columns: ballot_code, candidate_code
+        Accepts a CSV file with columns: ballot_code, candidate_identifier
     """
     csv_file = forms.FileField(
-        label='CSV File',
-        help_text='CSV with columns: ballot_code,candidate_code',
+            label='CSV File',
+            help_text='CSV with columns: ballot_code,candidate_identifier (candidate PK or order)',
         widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.csv'}),
     )
 
@@ -136,9 +133,10 @@ class BulkBallotUploadForm(forms.Form):
             raise ValidationError('CSV file is empty.')
 
         # Pre-validate rows
-        candidate_codes = set(
-            Candidate.objects.filter(election=self.election).values_list('code', flat=True)
-        )
+        # Accept candidate identifier in CSV as either PK or order
+        candidate_ids = set(str(pk) for pk in Candidate.objects.filter(election=self.election).values_list('pk', flat=True))
+        candidate_orders = set(str(ord) for ord in Candidate.objects.filter(election=self.election).values_list('order', flat=True))
+        candidate_identifiers = candidate_ids.union(candidate_orders)
         existing_ballot_codes = set(
             Ballot.objects.filter(election=self.election).values_list('ballot_code', flat=True)
         )
@@ -149,7 +147,7 @@ class BulkBallotUploadForm(forms.Form):
 
         for i, row in enumerate(rows, start=2):  # 2 because row 1 is header
             bc = (row.get('ballot_code') or '').strip().upper()
-            cc = (row.get('candidate_code') or '').strip().upper()
+            cc = (row.get('candidate_code') or '').strip()
 
             if not bc:
                 errors.append(f'Row {i}: ballot_code is empty.')
@@ -162,8 +160,8 @@ class BulkBallotUploadForm(forms.Form):
             else:
                 seen_codes.add(bc)
 
-            if cc not in candidate_codes:
-                errors.append(f'Row {i}: unknown candidate_code "{cc}".')
+            if cc not in candidate_identifiers:
+                errors.append(f'Row {i}: unknown candidate "{cc}".')
 
             if len(errors) > 50:
                 errors.append('... too many errors, showing first 50.')
@@ -181,16 +179,16 @@ class BulkBallotUploadForm(forms.Form):
 # ---------------------------------------------------------------------------
 class BulkBallotTextForm(forms.Form):
     """
-    Accepts pasted data: one ballot per line, format ballot_code,candidate_code
+        Accepts pasted data: one ballot per line, format ballot_code,candidate_identifier
     """
     data = forms.CharField(
         widget=forms.Textarea(attrs={
             'class': 'form-control',
             'rows': 12,
-            'placeholder': 'ballot_code,candidate_code\nABC-001,C01\nABC-002,C02',
+                'placeholder': 'ballot_code,candidate_id_or_order\nABC-001,1\nABC-002,2',
         }),
         label='Ballot Data',
-        help_text='One entry per line: ballot_code,candidate_code',
+            help_text='One entry per line: ballot_code,candidate_id_or_order',
     )
 
     def __init__(self, *args, election=None, **kwargs):
@@ -207,9 +205,10 @@ class BulkBallotTextForm(forms.Form):
         if len(lines) > max_rows:
             raise ValidationError(f'Maximum {max_rows} entries allowed.')
 
-        candidate_map = dict(
-            Candidate.objects.filter(election=self.election).values_list('code', 'pk')
-        )
+        candidate_map = {}
+        for c in Candidate.objects.filter(election=self.election):
+            candidate_map[str(c.pk)] = c.pk
+            candidate_map[str(c.order)] = c.pk
         existing_ballot_codes = set(
             Ballot.objects.filter(election=self.election).values_list('ballot_code', flat=True)
         )
@@ -223,7 +222,7 @@ class BulkBallotTextForm(forms.Form):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
-            parts = [p.strip().upper() for p in line.split(',')]
+            parts = [p.strip() for p in line.split(',')]
             if len(parts) != 2:
                 errors.append(f'Line {i}: expected "ballot_code,candidate_code".')
                 continue

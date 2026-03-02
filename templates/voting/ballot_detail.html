@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Ballot {{ ballot.ballot_code }} – {{ election.name }}{% endblock %}
+{% block content %}
+<div class="container">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Cuộc bầu cử</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'voting:ballot_list' election_pk=election.pk %}">Ballots</a></li>
+      <li class="breadcrumb-item active">{{ ballot.ballot_code }}</li>
+    </ol>
+  </nav>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">Chi tiết phiếu</h5>
+    </div>
+    <div class="card-body">
+      <dl class="row">
+        <dt class="col-sm-3">Mã phiếu</dt>
+        <dd class="col-sm-9"><code>{{ ballot.ballot_code }}</code></dd>
+
+        <dt class="col-sm-3">Ứng viên</dt>
+        <dd class="col-sm-9">
+          {% if ballot.choices.all %}
+            {% for ch in ballot.choices.all %}
+              <div><span class="badge bg-secondary">{{ ch.candidate.order }}</span> {{ ch.candidate.name }}</div>
+            {% endfor %}
+          {% else %}
+            {% if ballot.candidate %}
+              <span class="badge bg-secondary">{{ ballot.candidate.order }}</span> {{ ballot.candidate.name }}
+            {% else %}
+              <div class="text-muted">Không có ứng viên được ghi nhận.</div>
+            {% endif %}
+          {% endif %}
+        </dd>
+
+        <dt class="col-sm-3">Trạng thái</dt>
+          <dd class="col-sm-9">{{ ballot.get_verification_status_display }}
+              {% if ballot.is_invalid %}
+              <span class="badge bg-danger ms-2">Không hợp lệ</span>
+              {% endif %}
+          </dd>
+
+        <dt class="col-sm-3">Người nhập</dt>
+        <dd class="col-sm-9">{{ ballot.entered_by.username }}</dd>
+
+        <dt class="col-sm-3">Người xác minh</dt>
+        <dd class="col-sm-9">{{ ballot.verified_by.username|default:"-" }}</dd>
+
+        <dt class="col-sm-3">Tạo lúc</dt>
+        <dd class="col-sm-9">{{ ballot.created_at|date:"d/m/Y H:i:s 'UTC+7'" }}</dd>
+
+        <dt class="col-sm-3">Cập nhật lúc</dt>
+        <dd class="col-sm-9">{{ ballot.updated_at|date:"d/m/Y H:i:s 'UTC+7'" }}</dd>
+      </dl>
+      <a href="{% url 'voting:ballot_list' election_pk=election.pk %}" class="btn btn-outline-secondary">Quay lại danh sách phiếu</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

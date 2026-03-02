@@ -32,7 +32,7 @@ function createChart(data) {
     const ctx = document.getElementById('chartCanvas');
     if (!ctx) return;
 
-    const labels = data.candidates.map(c => c.code + ' – ' + c.name);
+    const labels = data.candidates.map(c => c.order + ' – ' + c.name);
     const values = data.candidates.map(c => c.total_votes);
     const colors = data.candidates.map((_, i) => COLORS[i % COLORS.length]);
 
@@ -95,7 +95,7 @@ function updateDashboard(data) {
             <div class="mb-3">
                 <div class="d-flex justify-content-between mb-1">
                     <span class="fw-semibold">
-                        <span class="badge bg-secondary me-1">${c.code}</span> ${c.name}
+                        <span class="badge bg-secondary me-1">${c.order}</span> ${c.name}
                     </span>
                     <span>${c.total_votes} votes <span class="text-muted">(${c.percentage}%)</span></span>
                 </div>
@@ -118,7 +118,7 @@ function updateDashboard(data) {
         let rows = '';
         data.candidates.forEach(function (c) {
             rows += `<tr>
-                <td><span class="badge bg-secondary">${c.code}</span> ${c.name}</td>
+                <td><span class="badge bg-secondary">${c.order}</span> ${c.name}</td>
                 <td class="text-end">${c.total_votes}</td>
                 <td class="text-end">${c.percentage}%</td>
                 <td class="text-end">${c.verified_votes}</td>
@@ -130,7 +130,7 @@ function updateDashboard(data) {
     // Update chart
     if (dashboardChart && data.candidates) {
         dashboardChart.data.datasets[0].data = data.candidates.map(c => c.total_votes);
-        dashboardChart.data.labels = data.candidates.map(c => c.code + ' – ' + c.name);
+        dashboardChart.data.labels = data.candidates.map(c => c.order + ' – ' + c.name);
         dashboardChart.update('none');
     }
 }

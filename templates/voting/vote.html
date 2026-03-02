@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Vote – {{ election.name }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'voting:election_list' %}">Cuộc bầu cử</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'voting:election_detail' pk=election.pk %}">{{ election.name }}</a></li>
+          <li class="breadcrumb-item active">Vote</li>
+        </ol>
+      </nav>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-white">
+          <h4 class="mb-0"><i class="bi bi-arrow-up-square"></i> Bỏ phiếu cho {{ election.name }}</h4>
+        </div>
+        <div class="card-body">
+          {% if invalid %}
+          <div class="alert alert-warning">
+            <h6 class="mb-1">Phiếu không hợp lệ</h6>
+            <p class="mb-1">{{ invalid_reason }}</p>
+            <p class="small text-muted">Phiếu vẫn sẽ được lưu nhưng sẽ được đánh dấu là không hợp lệ và không được tính vào số liệu.</p>
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            {% for id in selected %}
+              <input type="hidden" name="candidates" value="{{ id }}">
+            {% endfor %}
+            <input type="hidden" name="confirm" value="1">
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-warning">Xác nhận lưu phiếu không hợp lệ</button>
+              <a href="{% url 'voting:vote' election_pk=election.pk %}" class="btn btn-outline-secondary">Hủy</a>
+            </div>
+          </form>
+          {% else %}
+          <form method="post">
+            {% csrf_token %}
+            <p class="small text-muted">Chọn một hoặc nhiều ứng viên và gửi.</p>
+            <div class="list-group mb-3">
+              {% for c in election.candidates.all %}
+              <label class="list-group-item">
+                <input type="checkbox" name="candidates" value="{{ c.pk }}" class="form-check-input me-2"> {{ c.order }} — {{ c.name }}
+              </label>
+              {% empty %}
+              <div class="text-muted">Không có ứng viên cho cuộc bầu cử này.</div>
+              {% endfor %}
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Gửi phiếu</button>
+              <a href="{% url 'voting:election_detail' pk=election.pk %}" class="btn btn-outline-secondary">Quay lại</a>
+            </div>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
