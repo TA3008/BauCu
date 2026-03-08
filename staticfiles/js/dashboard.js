@@ -127,6 +127,16 @@ function updateDashboard(data) {
         tbody.innerHTML = rows;
     }
 
+    // Update footer totals (total votes and verified ballots)
+    const totalVotesCell = document.querySelector('#summaryTable tfoot td:nth-child(2)');
+    const verifiedCell = document.querySelector('#summaryTable tfoot td:nth-child(4)');
+    if (totalVotesCell && typeof data.total_ballots !== 'undefined') {
+        totalVotesCell.textContent = data.total_ballots;
+    }
+    if (verifiedCell && typeof data.verified_ballots !== 'undefined') {
+        verifiedCell.textContent = data.verified_ballots;
+    }
+
     // Update chart
     if (dashboardChart && data.candidates) {
         dashboardChart.data.datasets[0].data = data.candidates.map(c => c.total_votes);

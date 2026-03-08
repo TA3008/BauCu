@@ -130,8 +130,8 @@ function updateDashboard(data) {
     // Update footer totals (total votes and verified ballots)
     const totalVotesCell = document.querySelector('#summaryTable tfoot td:nth-child(2)');
     const verifiedCell = document.querySelector('#summaryTable tfoot td:nth-child(4)');
-    if (totalVotesCell && typeof data.total_ballots !== 'undefined') {
-        totalVotesCell.textContent = data.total_ballots;
+    if (totalVotesCell && typeof data.total_votes !== 'undefined') {
+        totalVotesCell.textContent = data.total_votes;
     }
     if (verifiedCell && typeof data.verified_ballots !== 'undefined') {
         verifiedCell.textContent = data.verified_ballots;

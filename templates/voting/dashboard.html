@@ -56,7 +56,7 @@
             <div class="card stat-card border-0 shadow-sm text-center">
                 <div class="card-body">
                                     <div class="display-5 text-warning" id="pendingBallots">
-                                        {{ dashboard.total_ballots|default:"0" }}
+                                        {{ dashboard.pending_ballots|default:"0" }}
                                     </div>
                     <div class="text-muted">Chờ / Bị từ chối</div>
                 </div>
@@ -148,7 +148,7 @@
                         <tfoot class="table-light fw-bold">
                             <tr>
                                 <td>Tổng</td>
-                                <td class="text-end">{{ dashboard.total_ballots }}</td>
+                                    <td class="text-end">{{ dashboard.total_ballots }}</td>
                                 <td class="text-end">100%</td>
                                 <td class="text-end">{{ dashboard.verified_ballots }}</td>
                             </tr>

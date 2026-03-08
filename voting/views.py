@@ -561,29 +561,67 @@ class DashboardView(AdminRequiredMixin, View):
         data = cache.get(cache_key)
         if data:
             return data
-
+        # VoteSummary stores per-candidate vote counts (one candidate may
+        # receive multiple votes per ballot if multi-choice is allowed).
+        # Provide both vote-based and ballot-based totals so the UI can show
+        # consistent numbers (ballot counts vs vote counts).
         summaries = (
             VoteSummary.objects.filter(election=election)
             .select_related('candidate')
             .order_by('-total_votes')
         )
-        total = sum(s.total_votes for s in summaries)
+
+        # Count actual ballots (exclude invalid ballots)
+        total_ballots = Ballot.objects.filter(election=election, is_invalid=False).count()
+        verified_ballots = Ballot.objects.filter(
+            election=election,
+            verification_status=Ballot.VerificationStatus.VERIFIED,
+            is_invalid=False,
+        ).count()
+
         candidates = []
+        # For each candidate, compute distinct ballots that include them.
+        # A ballot may include a candidate via Ballot.candidate (single-choice / bulk)
+        # or via BallotChoice for multi-select ballots. Use DISTINCT to avoid double-counting.
         for s in summaries:
-            pct = (s.total_votes / total * 100) if total else 0
-            vpct = (s.verified_votes / total * 100) if total else 0
+            cand = s.candidate
+            ballots_qs = Ballot.objects.filter(
+                election=election, is_invalid=False
+            ).filter(
+                Q(candidate=cand) | Q(choices__candidate=cand)
+            ).distinct()
+            ballot_count = ballots_qs.count()
+            verified_count = ballots_qs.filter(
+                verification_status=Ballot.VerificationStatus.VERIFIED
+            ).count()
             candidates.append({
-                'name': s.candidate.name,
-                'order': s.candidate.order,
-                'total_votes': s.total_votes,
-                'verified_votes': s.verified_votes,
-                'percentage': round(pct, 2),
-                'verified_percentage': round(vpct, 2),
+                'name': cand.name,
+                'order': cand.order,
+                'total_votes': ballot_count,
+                'verified_votes': verified_count,
+                # percentage fields filled below after computing denominator
+                'percentage': 0,
+                'verified_percentage': 0,
             })
 
+        # Normalize percentages so candidate percentages sum to 100%.
+        denom = sum(c['total_votes'] for c in candidates)
+        for c in candidates:
+            if denom:
+                c['percentage'] = round((c['total_votes'] / denom) * 100, 2)
+                c['verified_percentage'] = round((c['verified_votes'] / denom) * 100, 2)
+            else:
+                c['percentage'] = 0
+                c['verified_percentage'] = 0
+
+        # Keep vote-level total for backward compatibility (sum of VoteSummary)
+        total_votes = sum(s.total_votes for s in summaries)
+
         data = {
-            'total_ballots': total,
-            'verified_ballots': sum(s.verified_votes for s in summaries),
+            'total_ballots': total_ballots,
+            'verified_ballots': verified_ballots,
+            'pending_ballots': total_ballots - verified_ballots,
+            'total_votes': total_votes,
             'candidates': candidates,
         }
         cache.set(cache_key, data, CACHE_TTL)
@@ -635,7 +673,7 @@ def api_audit_log(request, election_pk):
 class BallotListView(ViewerRequiredMixin, ListView):
     template_name = 'voting/ballot_list.html'
     context_object_name = 'ballots'
-    paginate_by = 50
+    paginate_by = 100
 
     def get_queryset(self):
         election = get_object_or_404(Election, pk=self.kwargs['election_pk'])
